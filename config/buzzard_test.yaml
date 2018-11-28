@@ -2,8 +2,9 @@ basic:
   workdir : /global/cscratch1/sd/sws/dc2/data/buzzard_v1.6_test/desy5/
   simulation : buzzard_v1.6_test
   columns : ra dec mag_r_des mag_i_des mag_z_des redshift ellipticity_1_true ellipticity_2_true shear_1 shear_2
-  cuts : mag_i_des,24.1,-
+  cuts : mag_i_des,24.1,- redshift,0.2,+
+  sample : source
 
 nofz:
   nbins : 6
-  sigma : 0.05
+  sigma : 0.05 

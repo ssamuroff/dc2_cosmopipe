@@ -31,7 +31,8 @@ class interface:
 		print('Retrieving (%d) requested columns.'%len(columns))
 		self.cols = cat.get_quantities(columns)
 
-		print('Catalogue contains %d objects'%len(self.cols))
+		print('Catalogue contains %d M objects'%(len(self.cols[ columns[0] ])*1.0/1e6 ))
+		self.ngal = len(self.cols[ columns[0] ])
 
 	def create_mask(self, options):
 		"""Generates a selection mask to apply to the catalogues.
@@ -41,7 +42,7 @@ class interface:
 
 		cuts = options['basic']['cuts'].split()
 
-		self.mask = np.ones(len(self.cols)).astype(bool)
+		self.mask = np.ones(self.ngal).astype(bool)
 
 		for cut in cuts:
 			colname,value,direction = cut.split(',')
@@ -61,6 +62,8 @@ class interface:
 
 
 	def parse_config(self, config, sections=None):
+
+		self.sample = config['basic']['sample']
 
 		self.info = {}
 

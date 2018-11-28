@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 import os
 plt.style.use('y1a1')
+plt.switch_backend('agg')
 matplotlib.rcParams['text.usetex']=False
 
 def pz(z0, sigma=0.05):
@@ -21,13 +22,13 @@ class generator(base.interface):
 		# But the details aren't really important for the moment
 
 		# Define the redshift binning
-		edges = self.find_bin_edges(self.info['nbins'])
-		ztrue = cols['redshift'][self.mask]
+		self.edges = self.find_bin_edges(self.info['nbins'])
+		ztrue = self.cols['redshift'][self.mask]
 
 		nz = []
 
 		# Cycle through each bin in turn
-		for i,(lower,upper) in enumerate(zip(edges[:-1],edges[1:])):
+		for i,(lower,upper) in enumerate(zip(self.edges[:-1],self.edges[1:])):
 		    # Select the galaxies with true redshifts in the bin range
 		    binsel = (ztrue<upper) & (ztrue>lower)
 		    zbin = ztrue[binsel][::fthin]
@@ -46,23 +47,31 @@ class generator(base.interface):
 
 		print('Done')
 
-	def plot(self):
+	def plot(self, show_true=True):
 		plt.subplot(1,1,1)
 		z = np.linspace(0,3.5,1000)
 
 		for j,n in enumerate(self.nz):
 			plt.plot(z,n/np.trapz(n,z),color=self.colours[j])
 
+		for j,(lower,upper) in enumerate(zip(self.edges[:-1], self.edges[1:])):
+			plt.axvspan(lower,upper,color=self.colours[j],alpha=0.1)
+
+		if show_true:
+			h,b = np.histogram(self.cols['redshift'][self.mask], bins=np.linspace(0,3.5,400), normed=1)
+			x = (b[:-1]+b[1:])/2
+			plt.plot(x,h,ls=':',color='k')
+
 		plt.xlim(0,2.5)
 		plt.ylim(ymin=0)
 		plt.yticks(visible=False)
-		plt.xticks(visible=False)
+		plt.xticks(visible=True)
 
 		os.system('mkdir -p %s/nofz/'%self.basedir)
 		out = np.vstack((z,self.nz))
-		np.savetxt('%s/nofz/source.nz'%base,out.T)
+		np.savetxt('%s/nofz/%s.nz'%(self.basedir,self.sample),out.T)
 
-		plt.subplots_adjust(hspace=0,wspace=0)
+		plt.subplots_adjust(hspace=0,wspace=0, bottom=0.14)
 		plt.xlabel('Redshift $z$', fontsize=16)
 
 		os.system('mkdir -p %s/plots/'%self.basedir)
@@ -130,7 +139,9 @@ def main():
 	columns = config['basic']['columns'].split()
 
 	nofz = generator(config['basic']['simulation'], columns, basedir=config['basic']['workdir'])
+	nofz.create_mask(config)
 	nofz.parse_config(config, sections=['nofz'])
+
 
 	nofz.get_nofz()
 	nofz.plot()
