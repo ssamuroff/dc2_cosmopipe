@@ -1,0 +1,4 @@
+source /global/common/software/lsst/cori-haswell-gcc/stack/setup_current_sims.sh
+setup lsst_sims
+
+export PYTHONPATH=$PYTHONPATH:/global/cscratch1/sd/sws/tools/
