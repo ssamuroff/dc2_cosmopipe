@@ -6,9 +6,9 @@ Everything that follows assuming you're running on NERSC.
 
 ## Commands
 
-1. Before you do anything you'll need to load the depedencies: `source setup_descsims`
+* Before you do anything you'll need to load the depedencies: `source setup_descsims`
 
-2. The following generates some redshift distributions using a simple error model. 
+* The following generates some redshift distributions using a simple error model. 
 
 `python -m dc2_cosmopipe.scripts.nofz config/example_config.yaml`
 
