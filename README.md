@@ -1,6 +1,8 @@
 # DC2 cosmology
 
-A place for DC2 related analysis and pipeline code. Everything that follows assuming you're running on NERSC.
+A place for DC2 related analysis and pipeline code.
+
+Everything that follows assuming you're running on NERSC.
 
 ## Commands
 
