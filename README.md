@@ -4,11 +4,50 @@ A place for DC2 related analysis and pipeline code.
 
 Everything that follows assuming you're running on NERSC.
 
+## Overview
+
+In terms of information flow, almost everything is set by the config files. The basic idea is that one YAML file represents one (galaxy) sample, with a particular selection function.
+
+As an example, perhaps look at `config/cosmoDC2_source.yaml` in this repository.
+The settings are grouped into blocks. From the top,
+
+#### basic
+
+Sets the top-level details to do with the sample and where to save outputs. 
+
+The working directory is given by `workdir`. Note that this should be a full path. A directory at this location, and various sub-directories, will be created if they aren't already there.
+
+`simulation` tells the code which parent cosmological simulation to load. The initial load step calls the GCRCatalogues package https://github.com/LSSTDESC/gcr-catalogs, which makes things much easier (the github link also has a list of currently available catalogues).
+
+`columns` is a whitespace-delimited list of column names. See https://github.com/LSSTDESC/gcr-catalogs/blob/master/GCRCatalogs/SCHEMA.md
+
+The selection mask is defined by `cuts`. You can specify as many cuts as you like, separated by spaces. Each one has the format column_name,value,upper/lower. So in the example we have two:
+
+*`mag_i_lsst,24.1,-` places an upper bound on the i-band magnitude at i=24.1
+
+*`redshift,0.2,+` places a lower bound on redshift at z=0.2
+
+You can also choose to impose an additional (slightly more complicated) selection using the `colour_split` field. Values of either "red" or "blue" will define a cut in colour-magniutude space (as defined by true magnitudes). This bit is a work in progress.
+
+Finally `sample` is the name of the population defined by the above choices. This is just used to decide on file names and internal bookkeeping; in the examples in this repo we've make unimaginative choices ("source" and "lens"), but the sample names can be anything you like.
+
+### nofz
+
+Sets the redshift distribution parameters. Currently we have only two: `zbins` is the number of (equal-number) redshift bins to use and `sigma` is the width of the z=0 redshift error distribution.
+
+### 2pt
+
+Sets the parameters used in the correlation function calculations. The binning (number, lower, upper) are set respectively by `tbins`, `tmin` and `tmax`. You'll also need to specify `ctype`, which gives one half of the two point correlatees (not sure if that's a word, but I'm using it anyway). When you're calling the code to do a two point measurement you'll need to give two config files (and so two samples, and two `ctypes`).
+
+A few sensible pairings might be: `shear-position` (a.k.a. gamma_t), `position-position` (a.k.a. wtheta), `shear-shear` (a.k.a. xipm). You can also do the same with "ellipticity" in place of "shear".
+
+
 ## Commands
 
 ### Set up
 
 Before you do anything you'll need to load the depedencies: `source setup_descsims`
+Also make sure the repo root directory is in your python path.
 
 ### Redshift Distributions
 
