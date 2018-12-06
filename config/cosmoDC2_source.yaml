@@ -1,0 +1,18 @@
+basic:
+  workdir : /global/cscratch1/sd/sws/dc2/data/cosmoDC2_v1.0_small/desy5/
+  simulation : cosmoDC2_v1.0_small
+  columns : ra dec mag_r_lsst mag_i_lsst mag_z_lsst redshift ellipticity_1_true ellipticity_2_true shear_1 shear_2
+  cuts : mag_i_lsst,24.1,- redshift,0.2,+
+  colour_split : 
+  sample : source
+
+nofz:
+  zbins : 6
+  sigma : 0.05 
+
+
+2pt:
+  tbins : 10
+  tmin : 0.1
+  tmax : 250
+  ctype : shear

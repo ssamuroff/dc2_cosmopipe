@@ -16,16 +16,18 @@ def pz(z0, sigma=0.05):
 
 class generator(base.interface):
 
+
 	def get_nofz(self, fthin=100):
 		# Now let's try a basic mock up for the tomographic binning
 		# This comes from Ma, Hu & Huterer (2005) arXiv:0506614
 		# But the details aren't really important for the moment
 
 		# Define the redshift binning
-		self.edges = self.find_bin_edges(self.info['nbins'])
+		self.edges = self.find_bin_edges(self.info['zbins'])
 		ztrue = self.cols['redshift'][self.mask]
 
 		nz = []
+		nz_true = []
 
 		# Cycle through each bin in turn
 		for i,(lower,upper) in enumerate(zip(self.edges[:-1],self.edges[1:])):
@@ -41,14 +43,35 @@ class generator(base.interface):
 		    for z0 in zbin:
 		    	buffer+=pz(z0, sigma=self.info['sigma'])
 
+		    H,b = np.histogram(ztrue[binsel], bins=np.linspace(0,3.5,1000))
+		    x = (b[:-1]+b[1:])/2
+
 		    nz.append(buffer)
+		    nz_true.append(H)
 
 		self.nz = np.array(nz)
+		self.nz_true = np.array(nz_true)
+		self.z_true = x
 
 		print('Done')
 
+	def save(self):
+		print('Saving redshift information to %s/nofz/'%self.basedir)
+		os.system('mkdir -p %s/nofz/'%self.basedir)
+
+		# Smooth error-convolved distributions
+		z = np.linspace(0,3.5,1000)
+		out = np.vstack((z,self.nz))
+		np.savetxt('%s/nofz/%s.nz'%(self.basedir,self.sample),out.T)
+
+		# Histograms of true redshifts
+		out = np.vstack((self.z_true, self.nz_true))
+		np.savetxt('%s/nofz/%s-true.nz'%(self.basedir,self.sample),out.T)
+
+		return 0
+
 	def plot(self, show_true=True):
-		plt.subplot(1,1,1)
+		plt.subplot(2,1,1)
 		z = np.linspace(0,3.5,1000)
 
 		for j,n in enumerate(self.nz):
@@ -62,7 +85,16 @@ class generator(base.interface):
 			x = (b[:-1]+b[1:])/2
 			plt.plot(x,h,ls=':',color='k')
 
-		plt.xlim(0,2.5)
+		plt.xlim(0,self.cols['redshift'][self.mask].max()+0.5)
+		plt.ylim(ymin=0)
+		plt.yticks(visible=False)
+		plt.xticks(visible=False)
+
+		plt.subplot(2,1,2)
+		for j,n in enumerate(self.nz_true):
+			plt.plot(self.z_true,n/np.trapz(n,self.z_true),color=self.colours[j])
+
+		plt.xlim(0,self.cols['redshift'][self.mask].max()+0.5)
 		plt.ylim(ymin=0)
 		plt.yticks(visible=False)
 		plt.xticks(visible=True)
@@ -75,7 +107,9 @@ class generator(base.interface):
 		plt.xlabel('Redshift $z$', fontsize=16)
 
 		os.system('mkdir -p %s/plots/'%self.basedir)
-		plt.savefig('%s/plots/nofz.pdf'%self.basedir)
+		plt.savefig('%s/plots/nofz-%s.pdf'%(self.basedir, self.sample))
+
+		plt.close()
 
 	def find_bin_edges(self,nbins,w=None):
 		"""For an array x, returns the boundaries of nbins equal (possibly weighted by w) bins."""
@@ -139,11 +173,11 @@ def main():
 	columns = config['basic']['columns'].split()
 
 	nofz = generator(config['basic']['simulation'], columns, basedir=config['basic']['workdir'])
-	nofz.create_mask(config)
 	nofz.parse_config(config, sections=['nofz'])
-
+	nofz.create_mask(config)
 
 	nofz.get_nofz()
+	nofz.save()
 	nofz.plot()
 
 main()
