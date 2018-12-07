@@ -69,3 +69,7 @@ To generate a full 3x2pt datavector you need to call the above three times, once
 The results are saved as text files in the working directory under names that (hopefully) make what they are self-evident.
 
 This section of code is really just a wrapper for treecorr, which is what's used for the pair counting. The idea is (a) to make it easy to rerun with different simulations and/or samples with minimal hassle and (b) to nicely handle things like randoms and mean shear subtraction (if and when it's needed) in a consistent way.
+
+`python -m dc2_cosmopipe.scripts.plot_2pt config/example_config1.yaml`
+
+Will plot the results out in three triangle/grid plots. It's configured to make decent-looking figures for 6 source bins, 5 lens bins, but should hopefully work okay with other setups too.  
