@@ -54,6 +54,7 @@ class generator(base.interface):
 		self.z_true = x
 
 		print('Done')
+		return 0
 
 	def save(self):
 		print('Saving redshift information to %s/nofz/'%self.basedir)
@@ -110,6 +111,7 @@ class generator(base.interface):
 		plt.savefig('%s/plots/nofz-%s.pdf'%(self.basedir, self.sample))
 
 		plt.close()
+		return 0
 
 	def find_bin_edges(self,nbins,w=None):
 		"""For an array x, returns the boundaries of nbins equal (possibly weighted by w) bins."""

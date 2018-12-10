@@ -67,31 +67,41 @@ class corrfns:
 	def compute_position_position(self, i, j, cat1, cat2):
 		maski = (cat1.mask) & (self.p1==i)
 		maskj = (cat2.mask) & (self.p2==j)
+		rmaski = np.random.choice(self.rcat1['ra'].size, size=maski[maski].size, replace=False)
+		rmaskj = np.random.choice(self.rcat2['ra'].size, size=maskj[maskj].size, replace=False)
 
 		# Initialised the catlogues
 		cat_i = treecorr.Catalog(ra=cat1.cols['ra'][maski], dec=cat1.cols['dec'][maski], ra_units='deg', dec_units='deg')
 
 		cat_j = treecorr.Catalog(ra=cat2.cols['ra'][maskj], dec=cat2.cols['dec'][maskj], ra_units='deg', dec_units='deg')
 
-		rancat_i = treecorr.Catalog(ra=self.rcat1['ra'][maski], dec=self.rcat1['dec'][maski], ra_units='deg', dec_units='deg')
+		rancat_i = treecorr.Catalog(ra=self.rcat1['ra'][rmaski], dec=self.rcat1['dec'][rmaski], ra_units='deg', dec_units='deg')
+		rancat_j = treecorr.Catalog(ra=self.rcat2['ra'][rmaskj], dec=self.rcat2['dec'][rmaskj], ra_units='deg', dec_units='deg')
 
-		rancat_j = treecorr.Catalog(ra=self.rcat2['ra'][maskj], dec=self.rcat2['dec'][maskj], ra_units='deg', dec_units='deg')
+		# Trigger a warning if the random catalogues differ significantly from
+		# the main catalogues in size 
+		checki = (abs(cat_i.x.size - rancat_i.x.size) * 1./cat_i.x.size)>0.25
+		checkj = (abs(cat_j.x.size - rancat_j.x.size) * 1./cat_j.x.size)>0.25
 
+		if checki or checkj:
+			print("Warning: there are either significantly more or fewer randoms than actual galaxies in one or both samples.")
 
 		# Set up the correlation
 		nn = treecorr.NNCorrelation(nbins=cat1.info['tbins'], min_sep=cat1.info['tmin'], max_sep=cat1.info['tmax'], sep_units='arcmin', bin_slop=0.1, verbose=True,num_threads=1)
+
+		# And process it
+		nn.process(cat_i,cat_j)
+
 		nr = treecorr.NNCorrelation(nbins=cat1.info['tbins'], min_sep=cat1.info['tmin'], max_sep=cat1.info['tmax'], sep_units='arcmin', bin_slop=0.1, verbose=True,num_threads=1)
 		rn = treecorr.NNCorrelation(nbins=cat1.info['tbins'], min_sep=cat1.info['tmin'], max_sep=cat1.info['tmax'], sep_units='arcmin', bin_slop=0.1, verbose=True,num_threads=1)
 		rr = treecorr.NNCorrelation(nbins=cat1.info['tbins'], min_sep=cat1.info['tmin'], max_sep=cat1.info['tmax'], sep_units='arcmin', bin_slop=0.1, verbose=True,num_threads=1)
 
-		# And process it
-		nn.process(cat_i,cat_j)
 		nr.process(cat_i,rancat_j)
 		rn.process(rancat_i,cat_j)
 		rr.process(rancat_i,rancat_j)
 
-		theta = np.exp(nn.meanlogr)
 		wtheta,wthetaerr = nn.calculateXi(rr,dr=nr,rd=rn)
+		theta = np.exp(nn.meanlogr)
 		wthetaerr = np.sqrt(wthetaerr)
 
 		return theta, wtheta, np.array([0]*len(theta)), wthetaerr, np.array([0]*len(theta))

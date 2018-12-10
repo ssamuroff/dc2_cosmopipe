@@ -1,18 +1,20 @@
+
 basic:
   workdir : /global/cscratch1/sd/sws/dc2/data/buzzard_v1.6_test/desy5/
-  simulation : buzzard_test
-  columns : ra dec mag_r_des mag_i_des mag_z_des redshift ellipticity_1_true ellipticity_2_true shear_1 shear_2
-  cuts : mag_i_des,24.1,- mag_r_des,19.5,- redshift,0.2,+
+  simulation : buzzard_v1.6_test
+  columns : ra dec mag_r_des mag_i_des mag_z_des mag_true_r_des mag_true_i_des mag_true_z_des redshift
+  cuts : mag_i_des,24.1,- mag_r_des,22.5,- redshift,0.2,+ redshift,0.75,-
   colour_split : red
   sample : lens
 
 nofz:
-  nbins : 6
-  sigma : 0.05 
+  zbins : 5
+  sigma : 0.01
 
 
 2pt:
-  nbins : 10
+  tbins : 10
   tmin : 0.1
   tmax : 250
   ctype : position
+  randoms : False

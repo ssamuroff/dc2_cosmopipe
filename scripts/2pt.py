@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 import matplotlib
 from code.correlation_functions import *
 import os
+import fitsio as fi
+import scipy.spatial as sps
 plt.style.use('y1a1')
 plt.switch_backend('agg')
 matplotlib.rcParams['text.usetex']=False
@@ -27,10 +29,10 @@ class correlator(corrfns):
 
 		self.decide_what_to_do()
 
-		if self.corrtype[0]=='position':
-			self.create_random_catalogue(1,cat1)
-		if self.corrtype[1]=='position':
-			self.create_random_catalogue(2,cat2)
+		if (self.corrtype[0]=='position'):
+			self.find_random_catalogue(1,cat1, cat1.info['randoms'])
+		if (self.corrtype[1]=='position'):
+			self.find_random_catalogue(2,cat2, cat2.info['randoms'])
 
 	def process_all(self,cat1,cat2):
 		"""Loop through all the possible pairs of tomographic bins
@@ -67,23 +69,72 @@ class correlator(corrfns):
 
 		return 0
 
+	def find_random_catalogue(self,i,cat,path):
+		if os.path.exists(path):
+			self.read_fits_catalogue(i, path)
+		else:
+			self.create_random_catalogue(i,cat)
+
+		return 0
+
+	def read_fits_catalogue(self, i, path):
+		"""Read a catalogue of positions from disk.
+		We're assuming here that the footprint and density
+		are appropriate for the sample in question."""
+
+		print('Reading pre-made random catalogue from %s'%path)
+		randoms = fi.FITS(path)[-1].read()
+
+		print('Contains %3.3fM points'%(randoms.size/1e6))
+
+		setattr(self, 'rcat%d'%i, randoms)
+		return 0
 
 	def create_random_catalogue(self,i,cat):
 		"""Generate a catalogue of random points, of the same size
-		and drawn from the same area as the object catalogue provided."""
+		and drawn from the same area as the object catalogue provided.
+		The randoms are generated _before_ the selection is applied, which
+		is slightly slower, but should handle complicated geometric
+		masks more naturally. We might need to revisit this if doing it
+		this way turns out to be prohibitively slow.
+		Also... I couldn't see a better way of matching the shape of the sample 
+		footprint on the sky than the below. So sorry if this is a bit clunky."""
 
-		nrand = cat.cols['ra'].size
+		nrand = cat.cols['ra'][cat.mask].size
 		print('Generating random catalogue of %d points'%nrand)
 
 		randoms = np.zeros(nrand, dtype=[('ra',float), ('dec',float)])
 
+		# Draw random values Rx,Ry from the x,y range of the survey window
 		dx = cat.cols['ra'].max() - cat.cols['ra'].min()
-		x0 = cat.cols['ra'].min() 
-		randoms['ra'] = np.random.rand(nrand) * dx - x0
+		x0 = cat.cols['ra'].mean() 
+		Rx = (np.random.rand(nrand*4) - 0.5) * dx + x0
 
 		dy = cat.cols['dec'].max() - cat.cols['dec'].min()
-		y0 = cat.cols['dec'].min() 
-		randoms['dec'] = np.random.rand(nrand) * dy - y0
+		y0 = cat.cols['dec'].mean() 
+		Ry = (np.random.rand(nrand*4) - 0.5) * dy + y0
+
+		# construct a KD tree with the real galaxies
+		# (ok, they're not _that_ real, but not randoms)
+		xy = np.array([cat.cols['ra'][cat.mask], cat.cols['dec'][cat.mask]])
+		tree = sps.KDTree(xy.T)
+
+		# query to get a nearest neighbour for each random points
+		xy_rand = np.array([Rx,Ry])
+		r,ind = tree.query(xy_rand.T,k=1)
+
+		# Discard anything beyond a threshold distance from a real galaxy
+		mask = (r<0.03)
+		xy_rand_valid = xy_rand.T[mask]
+
+		# Downsample to the desired number of randoms.
+		indices = np.random.choice(np.arange(0, xy_rand_valid.T[0].size, 1), nrand, replace=False)
+		randoms['ra'] = xy_rand_valid.T[0][indices]
+		randoms['dec'] = xy_rand_valid.T[1][indices]
+
+		outfits = fi.FITS('%s/randoms-%s.fits'%(cat.basedir,cat.simulation), 'rw')
+		outfits.write(randoms)
+		outfits.close()
 
 		setattr(self, 'rcat%d'%i, randoms)
 
@@ -122,7 +173,7 @@ class catalogue(base.interface):
 		and an array of length Ngal with the integer bin 
 		assignments."""
 		self.edges = self.find_bin_edges(self.info['zbins'])
-		ztrue = self.cols['redshift']
+		ztrue = self.cols['redshift_true']
 		zbin = np.zeros(ztrue.size) - 1
 		index = []
 
@@ -141,7 +192,7 @@ class catalogue(base.interface):
 		"""For an array x, returns the boundaries of nbins equal 
 		(possibly weighted by w) bins."""
 
-		x = self.cols['redshift'][self.mask]
+		x = self.cols['redshift_true'][self.mask]
 
 		if w is None:
 			xs=np.sort(x)
@@ -195,8 +246,6 @@ class catalogue(base.interface):
 		return r
 
 
-
-
 def main():
 	# Two config files defining two samples to correlate
 	config1 = yaml.load(open(sys.argv[-2],'rb'))
@@ -209,9 +258,12 @@ def main():
 	cat1.parse_config(config1, sections=['nofz','2pt'])
 	cat1.create_mask(config1)
 
-	cat2 = catalogue(config2['basic']['simulation'], columns2, basedir=config2['basic']['workdir'])
-	cat2.parse_config(config2, sections=['nofz','2pt'])
-	cat2.create_mask(config2)
+	if (config1['basic']['simulation']==config2['basic']['simulation']) and (config1['basic']['sample']==config2['basic']['sample']):
+		cat2 = cat1
+	else:
+		cat2 = catalogue(config2['basic']['simulation'], columns2, basedir=config2['basic']['workdir'])
+		cat2.parse_config(config2, sections=['nofz','2pt'])
+		cat2.create_mask(config2)
 
 	# Set up an object to handle the correlations
 	corr = correlator(cat1, cat2)

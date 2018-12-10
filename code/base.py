@@ -61,7 +61,7 @@ class interface:
 			
 			self.true_colour_split(csplit)
 
-		print( 'Mask leaves %d/%d galaxies'%( len(self.cols['redshift'][self.mask]), len(self.cols['redshift'])) )
+		#print( 'Mask leaves %d/%d galaxies'%( len(self.cols[colname][self.mask]), len(self.cols[colname]) )
 
 		return 0
 
@@ -78,8 +78,12 @@ class interface:
 
 		redflag = np.zeros(self.cols['redshift'][self.mask].size)
 
-		rmag = self.cols['mag_r_lsst'][self.mask]
-		zmag = self.cols['mag_z_lsst'][self.mask]
+		if 'mag_r_lsst' in self.cols.keys():
+			magname = 'mag_%c_lsst'
+		else:
+			magname = 'mag_%c_des'
+		rmag = self.cols[magname%'r'][self.mask]
+		zmag = self.cols[magname%'z'][self.mask]
 		rz = rmag - zmag
 
 		ybins = np.linspace(0.3,2.5,70)
@@ -155,10 +159,10 @@ class interface:
 
 
 
-	def parse_config(self, config, sections=None):
+	def parse_config(self, config, sections=None, verbose=False):
 
 		self.sample = config['basic']['sample']
-		self.nbins = config['nofz']['zbins']
+		self.zbins = config['nofz']['zbins']
 
 		self.info = {}
 
@@ -168,9 +172,10 @@ class interface:
 		for section in sections:
 			for name in config[section].keys():
 				self.info[name] = config[section][name]
-				print('%s = '%name, self.info[name])
+				if verbose:
+					print('%s = '%name, self.info[name])
 
-		return None
+		return 0
 
 	def true_colour_split(self, colour, show=True):
 		print('Colour bin : %s'%colour)
@@ -181,8 +186,12 @@ class interface:
 
 		#redflag = np.zeros(self.cols['redshift'][self.mask].size)
 
-		rmag = self.cols['mag_true_r_lsst'][self.mask]
-		zmag = self.cols['mag_true_z_lsst'][self.mask]
+		if 'mag_true_r_lsst' in self.cols.keys():
+			magname = 'mag_true_%c_lsst'
+		else:
+			magname = 'mag_true_%c_des'
+		rmag = self.cols[magname%'r'][self.mask]
+		zmag = self.cols[magname%'z'][self.mask]
 		rz = rmag - zmag
 
 		ybins = np.linspace(-0.5,2.5,70)
@@ -190,8 +199,8 @@ class interface:
 
 		a0 = 0.037
 		c0 = -0.175
-		lineatx = (self.cols['mag_true_r_lsst']*a0 + c0)
-		rz0 = self.cols['mag_true_r_lsst'] - self.cols['mag_true_z_lsst']
+		lineatx = (self.cols[magname%'r']*a0 + c0)
+		rz0 = self.cols[magname%'r'] - self.cols[magname%'z']
 
 		redflag = rz0 < lineatx
 		fred = rz0[self.mask & redflag].size * 1.0 / rz0[self.mask].size
