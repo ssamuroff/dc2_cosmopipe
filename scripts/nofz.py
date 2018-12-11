@@ -16,6 +16,24 @@ def pz(z0, sigma=0.05):
 
 class generator(base.interface):
 
+	def get_mean_shape_dispersion(self, mask, shape_name='ellipticity', true=True):
+		"""Calculate the RMS ellipticity in each component
+		   and average the two.
+		   We'll need this later for the covariance calculation."""
+
+		if true:
+			suffix = '_true'
+		else:
+			suffix = ''
+
+		e1 = self.cols['%s_1'%shape_name + suffix][self.mask][mask]
+		e2 = self.cols['%s_2'%shape_name + suffix][self.mask][mask]
+
+		rms_e1 = np.sqrt(np.mean(e1*e1))
+		rms_e2 = np.sqrt(np.mean(e2*e2))
+
+		return (rms_e1 + rms_e2)/2
+
 
 	def get_nofz(self, fthin=100):
 		# Now let's try a basic mock up for the tomographic binning
@@ -24,10 +42,11 @@ class generator(base.interface):
 
 		# Define the redshift binning
 		self.edges = self.find_bin_edges(self.info['zbins'])
-		ztrue = self.cols['redshift'][self.mask]
+		ztrue = self.cols['redshift_true'][self.mask]
 
 		nz = []
 		nz_true = []
+		de = []
 
 		# Cycle through each bin in turn
 		for i,(lower,upper) in enumerate(zip(self.edges[:-1],self.edges[1:])):
@@ -48,10 +67,12 @@ class generator(base.interface):
 
 		    nz.append(buffer)
 		    nz_true.append(H)
+		    de.append([self.get_mean_shape_dispersion(binsel), ztrue[binsel].size])
 
 		self.nz = np.array(nz)
 		self.nz_true = np.array(nz_true)
 		self.z_true = x
+		self.de = np.array(de)
 
 		print('Done')
 		return 0
@@ -69,6 +90,11 @@ class generator(base.interface):
 		out = np.vstack((self.z_true, self.nz_true))
 		np.savetxt('%s/nofz/%s-true.nz'%(self.basedir,self.sample),out.T)
 
+		out = np.vstack((self.z_true, self.nz_true))
+		np.savetxt('%s/nofz/%s-true.nz'%(self.basedir,self.sample),out.T)
+
+		np.savetxt('%s/nofz/%s-rms-ellipticity.txt'%(self.basedir,self.sample),self.de)
+
 		return 0
 
 	def plot(self, show_true=True):
@@ -82,11 +108,11 @@ class generator(base.interface):
 			plt.axvspan(lower,upper,color=self.colours[j],alpha=0.1)
 
 		if show_true:
-			h,b = np.histogram(self.cols['redshift'][self.mask], bins=np.linspace(0,3.5,400), normed=1)
+			h,b = np.histogram(self.cols['redshift_true'][self.mask], bins=np.linspace(0,3.5,400), normed=1)
 			x = (b[:-1]+b[1:])/2
 			plt.plot(x,h,ls=':',color='k')
 
-		plt.xlim(0,self.cols['redshift'][self.mask].max()+0.5)
+		plt.xlim(0,self.cols['redshift_true'][self.mask].max()+0.5)
 		plt.ylim(ymin=0)
 		plt.yticks(visible=False)
 		plt.xticks(visible=False)
@@ -95,7 +121,7 @@ class generator(base.interface):
 		for j,n in enumerate(self.nz_true):
 			plt.plot(self.z_true,n/np.trapz(n,self.z_true),color=self.colours[j])
 
-		plt.xlim(0,self.cols['redshift'][self.mask].max()+0.5)
+		plt.xlim(0,self.cols['redshift_true'][self.mask].max()+0.5)
 		plt.ylim(ymin=0)
 		plt.yticks(visible=False)
 		plt.xticks(visible=True)
@@ -116,7 +142,7 @@ class generator(base.interface):
 	def find_bin_edges(self,nbins,w=None):
 		"""For an array x, returns the boundaries of nbins equal (possibly weighted by w) bins."""
 
-		x = self.cols['redshift'][self.mask]
+		x = self.cols['redshift_true'][self.mask]
 
 		if w is None:
 			xs=np.sort(x)

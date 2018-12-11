@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 import os
 import glob
+import argparse
 plt.style.use('y1a1')
 plt.switch_backend('pdf')
 matplotlib.rcParams['text.usetex']=False
@@ -13,7 +14,7 @@ matplotlib.rcParams["ytick.minor.visible"]=False
 matplotlib.rcParams["ytick.minor.width"]=0.1
 
 class cornerplot:
-    def __init__(self, options):
+    def __init__(self, options, args):
         self.basedir = options['basic']['workdir']
         self.files_xipm = glob.glob('%s/2pt/shear_shear_*txt'%self.basedir)
         self.files_gammat = glob.glob('%s/2pt/position_shear_*txt'%self.basedir)
@@ -24,6 +25,10 @@ class cornerplot:
         self.nsrc = np.unique([int(os.path.basename(f).split('_')[2]) for f in self.files_xipm]).size
         self.nlens = np.unique([int(os.path.basename(f).split('_')[2]) for f in self.files_wtheta]).size
         #self.n2 = np.unique([int(os.path.basename(f).split('_')[3].replace('.txt','')) for f in files]).size
+
+        self.ss = args.xipm
+        self.ns = args.gammat
+        self.nn = args.wtheta
 
     def get_spectra(self, i, j, ptype='shear_shear'):
         data = np.loadtxt('%s/2pt/%s_%d_%d.txt'%(self.basedir, ptype, i+1, j+1)).T
@@ -36,11 +41,14 @@ class cornerplot:
 
     def make(self):
         
-        if len(self.files_gammat)!=0:
+        if self.ns:
+            print('Processing gammat')
             self.make_gammat()
-        if len(self.files_wtheta)!=0:
+        if self.nn:
+            print('Processing wtheta')
             self.make_wt()
-        if len(self.files_xipm)!=0:
+        if self.ss:
+            print('Processing xipm')
             self.make_xipm()
 
         return 0
@@ -57,7 +65,7 @@ class cornerplot:
                     continue
 
                 print(i,j)
-                x, xip,xim, dp, dm = self.get_spectra(i,j)
+                x, xip,xim, dp, dm = self.get_spectra(j,i)
 
                 #posp = positions[(i+1,j+1,"+")]
                 ax = plt.subplot(rows,cols,count)
@@ -212,8 +220,17 @@ class cornerplot:
 
 
 def main():
-    config = yaml.load(open(sys.argv[-1],'rb'))
-    plotter = cornerplot(config)
+
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument('config', type=str, action='store')
+    parser.add_argument('--xipm', '-ss',action='store_true')
+    parser.add_argument('--gammat', '-ns',action='store_true')
+    parser.add_argument('--wtheta', '-nn',action='store_true')
+    args = parser.parse_args()
+
+    config = yaml.load(open(args.config,'rb'))
+
+    plotter = cornerplot(config, args)
     plotter.make()
 
 main()
