@@ -73,4 +73,5 @@ This section of code is really just a wrapper for treecorr, which is what's used
 `python -m dc2_cosmopipe.scripts.plot_2pt config/example_config1.yaml --xipm --gammat --wtheta`
 
 Will plot the results out in three triangle/grid plots. It's configured to make decent-looking figures for 6 source bins, 5 lens bins, but should hopefully work okay with other setups too.  
-To omit one or more of the correlation types you can remove one of the three final flags. 
+To omit one of the correlation types you can remove the corresponding flag --xipm, --gammat or --wtheta
+(NB the shorter forms -ss, -ns and -nn can equivalently be used here).
